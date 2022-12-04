@@ -1,1 +1,11 @@
-The Basics|nnnbnnnnnn-----nnnbnnnnnn-----nnnbnnnnnn-----nnnnnbnnnn-----nnnnnnnnnn-----nnnbnnnnnn-----nnnnnnnnnn-----nnnnnnnnnb-----nnnnnnnnnn-----nnnnnnnnnn-----nnnnnnnnnn-----nnnnnnnnnn-----
+Dev|tu-------------uu------------------------------p---------------------------------------------------------------------------------------------------------------------p--------------
+Classic|nnnnnnn--------nnnnnnn--------nnnnnnn--------nnnnnnn--------nnnnnnn--------nnnnnnn--------nnnnnnn--------nnnnnnn--------nnnnnnn--------nnnnnnn--------nnnnnnn--------nnnnnnn--------
+Bombs Away|nnnnnnnn-------bnnbnnbn-------nnnnnnnn-------nnnnnnnn-------bnnbnnbn-------nnnnnnnn-------nnnnnnnn-------bnnbnnbn-------nnnnnnnn-------nnnnnnnn-------bnnbnnbn-------nnnnnnnn-------
+Daisy Chain|nnnnnnnn-------bnnnnnbn-------nbnnnbnn-------nnbnnnnn-------nnnbnnnn-------nnnnbnnn-------nnnnbnnn-------nnnbnnnn-------nnbnnnnn-------nbnnnbnn-------bnnnnnbn-------nnnnnnnn-------
+Lock and Key|llllllll-------llllllll-------llllllll-------knnnbnnn-------nnnnnnnn-------nnnnnnnn-------nnnnnnnn-------nnnnnnnn-------nnnnbnnn-------llllllll-------llllllll-------llllllll-------
+Trick Shot|nnnnnlkl-------nnbnbl-l-------nnnnnl-l-------nnbnbl-l-------nnnnnl-l-------nnbnbl-l-------nnbnbl---------nnnnnlll-------nnbnbnbl-------nnnnnnnl-------nnbnbnbl-------nnnnnnnl-------
+
+
+
+
+Trick Shot 2|bbbuuuuu-------bbbu---u-------bbbu-u-u-------bbbu-u-u-------bbbu-u-u-------bbbu-u-u-------bbbu-u-t-------bbbubuuu-------bbbbbbbu-------bbbbbbbu-------bbbbbbbu-------bbbbbbbu-------
