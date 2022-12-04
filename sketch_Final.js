@@ -6,19 +6,26 @@ const BOARD_WIDTH_PIXLES = TILE_WIDTH * TILES_ACROSS;
 const BOARD_HEIGHT_PIXLES = TILE_HEIGHT * TILES_VERTICAL;
 const BALL_DIAMETER = 10;
 const BALL_RADIUS = BALL_DIAMETER / 2;
-const STARTING_VEL = 4;
+const STARTING_VEL = 5;
+const MIN_VEL = 4;
+const MAX_VEL = 12;
 const KILL_BARRIER_Y = BOARD_HEIGHT_PIXLES - 10;
 const BAR_WIDTH = 20;
+const MAX_BAR_SIZE = 500;
+const MIN_BAR_SIZE = 100;
 
 const tilTiles = [];
 const balBalls = [];
 
-var intMode = 0;//0=title screen, 1=main game, 2=level editor?,
+var intMode = 0;//0=title screen, 1=main game
 var strLevels;
 var intCurrentLevel = 0;
-var intBarLength = 200;
+var intBarLength = 500;
 var intLives = 3;
 var intBarCenter = 400;
+var blnKillKeyDownLastTick = false;
+var blnLevelOver = false;
+var blnSingleLevel = false;
 
 
 function preload() 
@@ -37,22 +44,55 @@ function setup()
 		tilTiles[intI] = Array(TILES_VERTICAL).fill(null);
 	}
 	
-	/**
-	tilTiles[0][0] = new normalTile();
-	tilTiles[1][0] = new normalTile();
-	tilTiles[0][1] = new normalTile();
-	tilTiles[1][1] = new bombTile();
-	**/
+}
+
+function checkForEndOfLevel()
+{
+	blnLevelOver = true;
 	
-	startOfLevel(0);
+	for(var intI = 0; intI < TILES_ACROSS; intI++)
+	{
+		for(var intJ = 0; intJ < TILES_VERTICAL; intJ++)
+		{
+			if(tilTiles[intI][intJ] != null)
+			{
+				if(tilTiles[intI][intJ].blnRequired)
+					blnLevelOver = false;
+			}
+		}
+	}
+
+}
+
+function startGame(intStartingLevel)
+{
+	intLives = 4;
+	intMode = 1;
+	intBarLength = 250;
+	intCurrentLevel = intStartingLevel;
+	startOfLevel(intStartingLevel);
 }
 
 
-function startOfLevel(strLevelAdress)
+function startOfLevel(intLevelAdress)
 {
-	strLevelString = strLevels[strLevelAdress];
+	if(strLevels[intLevelAdress] == "")
+	{
+		intMode = 0;
+	}else
+	{
+		startLevel(strLevels[intLevelAdress]);
+	}
+}
+
+function startLevel(strLevelString)
+{
 	strLevelName = "";
 	intPointer = 0;
+	intLives += 2;
+	intBarLength -= 50;
+	if(intBarLength < MIN_BAR_SIZE)
+		intBarLength = MIN_BAR_SIZE;
 	
 	while(strLevelString.charAt(intPointer) != '|')
 	{
@@ -61,6 +101,10 @@ function startOfLevel(strLevelAdress)
 	}
 	
 	intPointer++;
+	
+	intPortalX = 0;
+	intPortalY = 0;
+	blnPortalPlaced = false;
 	
 	for(var intI = 0; intI < TILES_ACROSS; intI++)
 	{
@@ -76,6 +120,34 @@ function startOfLevel(strLevelAdress)
 				case 'b':
 					tilTile = new bombTile();
 					break;
+				case 't':
+					tilTile = new timeTile();
+					break;
+				case 'u':
+					tilTile = new unbreakableTile();
+					break;
+				case 'k':
+					tilTile = new keyTile();
+					break;
+				case 'l':
+					tilTile = new lockedTile();
+					break;
+				case 'p':
+					tilTile = new portalTile();
+					if(blnPortalPlaced)
+					{
+						tilTile.setDestination(intPortalX, intPortalY);
+						tilTiles[intPortalX][intPortalY].setDestination(intI, intJ);
+					}else
+					{
+						blnPortalPlaced = true;
+						intPortalX = intI;
+						intPortalY = intJ;
+					}
+					break;
+				case 'o':
+					tilTile = new ballTile();
+					break;
 				default:
 					tilTile = null;
 			}
@@ -88,15 +160,17 @@ function startOfLevel(strLevelAdress)
 	print(strLevelName);
 }
 
-function throwNewBall()
+function throwNewBall(blnLifeDown)
 {
-	intLives--;
-	print("You now have " + intLives + " lives left");
+	if(blnLifeDown)
+		intLives--;
+	
+	
 	
 	if(intLives <= 0)
 		gameOver();
 	
-	balBalls[0] = new ball(intBarCenter, BOARD_HEIGHT_PIXLES - (4 * BALL_DIAMETER), 130)
+	balBalls[balBalls.length] = new ball(intBarCenter, BOARD_HEIGHT_PIXLES - (4 * BALL_DIAMETER), 130)
 }
 
 function gameOver()
@@ -116,75 +190,170 @@ function draw()
 	rect(-2, -2, TILE_WIDTH * TILES_ACROSS + 2, TILE_HEIGHT * TILES_VERTICAL + 2);//Place board
 	noStroke();
 	
-	
-	
-	for(var intI = 0; intI < TILES_ACROSS; intI++)//Draw Tiles
+	if(intMode == 0)//Title screen
 	{
-		for(var intJ = 0; intJ < TILES_VERTICAL; intJ++)
+		push();
+		textAlign(CENTER, TOP);
+		textSize(50);
+		intMouseOnText = 0;//0=None, 1=Start Game, 2=LevelSelect
+		rectMode(CORNERS);
+		
+		intAdjustedMouseX = mouseX - ((windowWidth / 2) - (TILE_WIDTH * (TILES_ACROSS / 2)));
+		intAdjustedMouseY = mouseY - 10;
+		
+		if(intAdjustedMouseX > (BOARD_WIDTH_PIXLES / 2) - 125 && intAdjustedMouseX < (BOARD_WIDTH_PIXLES / 2) + 125 && intAdjustedMouseY > (BOARD_HEIGHT_PIXLES / 2) - 50 && intAdjustedMouseY < BOARD_HEIGHT_PIXLES / 2)
 		{
-			tilTile = tilTiles[intI][intJ];
-			if(tilTile != null)
-				tilTile.drawSelf(intI, intJ);
+			fill("#fff200");
+			intMouseOnText = 1;
+		}else
+		{
+			fill(255);
 		}
-	}
-	
-	for(var intI = 0; intI < balBalls.length; intI++)//Tick balls
-	{
-		if(balBalls[intI].tick())//Tick balls, check if they're out of bounds
+		
+		text("Start Game", BOARD_WIDTH_PIXLES / 2, BOARD_HEIGHT_PIXLES / 2 - 50);
+		
+		if(intAdjustedMouseX > (BOARD_WIDTH_PIXLES / 2) - 135 && intAdjustedMouseX < (BOARD_WIDTH_PIXLES / 2) + 135 && intAdjustedMouseY > (BOARD_HEIGHT_PIXLES / 2) + 10 && intAdjustedMouseY < BOARD_HEIGHT_PIXLES / 2 + 60)
 		{
-			for(var intJ = intI; intJ < balBalls.length - 1; intJ++)
-				balBalls[intJ] = balBalls[intJ + 1];
+			fill("#fff200");
+			intMouseOnText = 2;
+		}else
+		{
+			fill(255);
+		}
+		
+		
+		text("Level Select", BOARD_WIDTH_PIXLES / 2, BOARD_HEIGHT_PIXLES / 2 + 10);
+		noFill();
+		stroke(255);
+		strokeWeight(2);
+		rect((BOARD_WIDTH_PIXLES / 2) - 125, (BOARD_HEIGHT_PIXLES / 2) - 50, BOARD_WIDTH_PIXLES / 2 + 125, BOARD_HEIGHT_PIXLES / 2);//Start game
+		rect((BOARD_WIDTH_PIXLES / 2) - 135, (BOARD_HEIGHT_PIXLES / 2) + 60, BOARD_WIDTH_PIXLES / 2 + 135, BOARD_HEIGHT_PIXLES / 2 + 10);
+		
+		
+		
+		
+		if(mouseIsPressed)
+		{
+			if(intMouseOnText == 1)
+				startGame(0);
 			
-			balBalls.length = balBalls.length - 1;
-			intI--;
+			if(intMouseOnText == 2)
+				intMode = 2;
+		}
+		
+		
+		pop();
+		
+		
+	}
+	else if(intMode == 1)
+	{
+		for(var intI = 0; intI < TILES_ACROSS; intI++)//Draw Tiles
+		{
+			for(var intJ = 0; intJ < TILES_VERTICAL; intJ++)
+			{
+				tilTile = tilTiles[intI][intJ];
+				if(tilTile != null)
+					tilTile.drawSelf(intI, intJ, false);
+			}
+		}
+		
+		push();
+		fill(255);
+		textSize(30);
+		text(strLevelName, 0, BOARD_HEIGHT_PIXLES + 30);
+		textAlign(RIGHT);
+		text("Lives: " + intLives, BOARD_WIDTH_PIXLES, BOARD_HEIGHT_PIXLES + 30);
+		pop();
+		
+		if(balBalls.length <= 0)//Make sure there is at least one ball
+			throwNewBall(true);
+		
+		for(var intI = 0; intI < balBalls.length; intI++)//Tick balls
+		{
+			if(balBalls[intI].tick())//Tick balls, check if they're out of bounds
+			{
+				for(var intJ = intI; intJ < balBalls.length - 1; intJ++)
+					balBalls[intJ] = balBalls[intJ + 1];
+				
+				balBalls.length = balBalls.length - 1;
+				intI--;
+			}
+		}
+		
+		for(var intI = 0; intI < balBalls.length; intI++)//Draw balls
+			balBalls[intI].drawSelf();
+			
+		if(keyIsDown(75) && !blnKillKeyDownLastTick)//Dev cheat
+		{
+			blnKillKeyDownLastTick = true;
+			for(var intI = 0; intI < TILES_ACROSS; intI++)
+			{
+				for(var intJ = 0; intJ < TILES_VERTICAL; intJ++)
+				{
+					if(tilTiles[intI][intJ] != null)
+						tilTiles[intI][intJ].hit(intI, intJ, null, 0);
+				}
+			}
+		}else if(!keyIsDown(75))
+		{
+			blnKillKeyDownLastTick = false;
+		}
+			
+			
+		if(keyIsDown(37))//Left key
+		{
+			intBarCenter -= 20;
+			
+			if(intBarCenter < intBarLength / 2)
+				intBarCenter = intBarLength / 2;
+		}
+		
+		if(keyIsDown(39))//Right key
+		{
+			intBarCenter += 20;
+			
+			if(intBarCenter > BOARD_WIDTH_PIXLES - intBarLength / 2)
+				intBarCenter = BOARD_WIDTH_PIXLES - intBarLength / 2;
+		}
+			
+		if(mouseX != pmouseX || mouseY != pmouseY)//If mouse is moved
+		{
+			intAdjustedMouseX = mouseX - ((windowWidth / 2) - (BOARD_WIDTH_PIXLES / 2));
+			
+			intBarCenter = intAdjustedMouseX;//Move bar so it's center is on the same x
+			
+			if(intBarCenter < intBarLength / 2)
+				intBarCenter = intBarLength / 2;
+			
+			if(intBarCenter > BOARD_WIDTH_PIXLES - intBarLength / 2)
+				intBarCenter = BOARD_WIDTH_PIXLES - intBarLength / 2;
+		}
+		
+		
+		push();//Draw bar
+		
+		translate(intBarCenter - intBarLength / 2, BOARD_HEIGHT_PIXLES - BAR_WIDTH);
+		
+		fill(255);
+		
+		rect(0, 0, intBarLength, BAR_WIDTH);
+		
+		if(blnLevelOver)
+		{
+			balBalls.length = 0;
+			
+			if(!blnSingleLevel)
+			{
+				intCurrentLevel++;
+				startOfLevel(intCurrentLevel);
+			}else
+			{
+				intMode = 0;
+			}
+			blnLevelOver = false;
 		}
 	}
-	
-	if(balBalls.length <= 0)//Make sure there is at least one ball
-		throwNewBall();
-	
-	for(var intI = 0; intI < balBalls.length; intI++)//Draw balls
-		balBalls[intI].drawSelf();
-		
-		
-	if(keyIsDown(37))//Left key
-	{
-		intBarCenter -= 20;
-		
-		if(intBarCenter < intBarLength / 2)
-			intBarCenter = intBarLength / 2;
-	}
-	
-	if(keyIsDown(39))//Right key
-	{
-		intBarCenter += 20;
-		
-		if(intBarCenter > BOARD_WIDTH_PIXLES - intBarLength / 2)
-			intBarCenter = BOARD_WIDTH_PIXLES - intBarLength / 2;
-	}
-		
-	if(mouseX != pmouseX || mouseY != pmouseY)//If mouse is moved
-	{
-		intAdjustedMouseX = mouseX - ((windowWidth / 2) - (BOARD_WIDTH_PIXLES / 2));
-		
-		intBarCenter = intAdjustedMouseX;//Move bar so it's center is on the same x
-		
-		if(intBarCenter < intBarLength / 2)
-			intBarCenter = intBarLength / 2;
-		
-		if(intBarCenter > BOARD_WIDTH_PIXLES - intBarLength / 2)
-			intBarCenter = BOARD_WIDTH_PIXLES - intBarLength / 2;
-	}
-	
-	
-	push();//Draw bar
-	
-	translate(intBarCenter - intBarLength / 2, BOARD_HEIGHT_PIXLES - BAR_WIDTH);
-	
-	fill(255);
-	
-	rect(0, 0, intBarLength, BAR_WIDTH);
-	
 }
 
 function getTileAtPoint(intX, intY)//Returns a tileInfo object
@@ -211,16 +380,31 @@ function ball(intX, intY, intHeading)
 	this.dblCenterX = intX;
 	this.dblCenterY = intY;
 	this.intDirection = intHeading;
+	this.intPortalCooldown = 0;
+	this.intTilesSinceLastSpeedUp = 0;
 	
 	this.intVelocity = STARTING_VEL;
+	
+	this.tileSpeedUp = function()
+	{
+		if(this.intTilesSinceLastSpeedUp > 20 && this.intVelocity < MAX_VEL)
+		{
+			this.intVelocity++;
+			this.intTilesSinceLastSpeedUp = 0;
+		}
+		this.intTilesSinceLastSpeedUp++;
+	}
 	
 	
 	this.tick = function()//Returns true if ball goes out of bounds
 	{
+		this.intPortalCooldown--;
+		if(this.intPortalCooldown < 0)
+			this.intPortalCooldown = 0;
 		dblNewX = this.dblCenterX + cos(this.intDirection) * this.intVelocity;
 		dblNewY = this.dblCenterY - sin(this.intDirection) * this.intVelocity;
 		
-		if(dblNewY + BALL_RADIUS >= BOARD_HEIGHT_PIXLES - BAR_WIDTH && dblNewX <= intBarCenter + (intBarLength / 2) && dblNewX >= intBarCenter - (intBarLength / 2))
+		if(dblNewY + BALL_RADIUS >= BOARD_HEIGHT_PIXLES - BAR_WIDTH && dblNewX <= intBarCenter + (intBarLength / 2) && dblNewX >= intBarCenter - (intBarLength / 2))//If ball hits the bar
 		{
 			intDistanceFromBarEdge = (intBarLength / 2) + (dblNewX - intBarCenter);
 			dblPercentOfBar = intDistanceFromBarEdge / intBarLength;
@@ -229,17 +413,14 @@ function ball(intX, intY, intHeading)
 			this.intDirection = intNewDirection;
 			
 			return false;
-			
-			//print("Distance from edge: " + intDistanceFromBarEdge + "\nPercent of bar: " + dblPercentOfBar + "\nNew Direction: " + intNewDirection);
-			
-		}else if(dblNewY >= KILL_BARRIER_Y)
+		}else if(dblNewY >= KILL_BARRIER_Y)//If ball is out of bounds
 		{
 			return true;
-		}else if(dblNewY - BALL_RADIUS <= 0)
+		}else if(dblNewY - BALL_RADIUS <= 0)//If ball hits top of play area
 		{
 			this.bounceUpDown();
 			return false;
-		}else if(dblNewX - BALL_RADIUS <= 0 || dblNewX + BALL_RADIUS >= BOARD_WIDTH_PIXLES)
+		}else if(dblNewX - BALL_RADIUS <= 0 || dblNewX + BALL_RADIUS >= BOARD_WIDTH_PIXLES)//If ball hits side of play area
 		{
 			this.bounceRightLeft();
 			return false;
@@ -416,95 +597,3 @@ function ball(intX, intY, intHeading)
 		this.intDirection = intNewDirection % 360;
 	}
 }
-
-
-function normalTile()
-{
-	this.drawSelf = function(intX, intY)
-	{
-		push();
-		fill("#c4a756");
-		translate(intX * TILE_WIDTH, intY * TILE_HEIGHT);
-		
-		rect(1, 1, TILE_WIDTH - 1, TILE_HEIGHT - 1);
-		
-		pop();
-	}
-	
-	this.hit = function(intX, intY, balBall, intDirection)//0=top, 1=right, 2=down, 3=left
-	{
-		tilTiles[intX][intY] = null;
-		
-		if(balBall != null)
-		{
-			if(intDirection % 2 == 1)
-			{
-				balBall.bounceRightLeft();
-			}else
-			{
-				balBall.bounceUpDown();
-			}
-		}
-	}
-}
-
-function bombTile()
-{
-	this.drawSelf = function(intX, intY)
-	{
-		push();
-		fill("#db1812");
-		translate(intX * TILE_WIDTH, intY * TILE_HEIGHT);
-		
-		rect(1, 1, TILE_WIDTH - 1, TILE_HEIGHT - 1);
-		
-		translate(TILE_WIDTH / 2, TILE_HEIGHT / 2);
-		fill(0);
-		
-		circle(0, 0, 20);
-		
-		strokeWeight(2);
-		stroke(0);
-		
-		line(0, 0, -9, -9);
-		
-		strokeWeight(2);
-		stroke("#de8912");
-		
-		line(-11, -10, -12, -10);
-		
-		pop();
-	}
-	
-	this.hit = function(intX, intY, balBall, intDirection)//0=top, 1=right, 2=down, 3=left
-	{
-		tilTiles[intX][intY] = null;//Remove self
-		
-		for(var intI = intX - 1; intI < intX + 2; intI++)//Go through all adjacent tiles
-		{
-			for(var intJ = intY - 1; intJ < intY + 2; intJ++)
-			{
-				if(intI >= 0 && intJ >= 0 && intI < TILES_ACROSS && intJ < TILES_VERTICAL)//If the tile isn't off the edge of the board,
-				{
-					if(tilTiles[intI][intJ] != null)// and isn't null
-					{
-						tilTiles[intI][intJ].hit(intI, intJ, null, false);// act like it was just hit
-					}
-				}
-			}
-		}
-		
-		if(balBall != null)
-		{
-			if(intDirection % 2 == 1)
-			{
-				balBall.bounceRightLeft();
-			}else
-			{
-				balBall.bounceUpDown();
-			}
-		}
-		
-	}
-}
-
